@@ -1,6 +1,8 @@
 import express from 'express';
-import { getPosts } from '../controllers/feed';
+import { getPosts, postPost } from '../controllers/feed';
 
 export const router = express.Router();
 
 router.get('/posts', getPosts);
+
+router.post('/post', postPost);
