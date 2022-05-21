@@ -1,4 +1,5 @@
 import { validationResult } from 'express-validator';
+import { Post } from '../models/post';
 import type { ExpressCB } from './types';
 
 export const getPosts: ExpressCB = (req, res) => {
@@ -18,7 +19,7 @@ export const getPosts: ExpressCB = (req, res) => {
   });
 }
 
-export const postPost: ExpressCB = (req, res) => {
+export const postPost: ExpressCB = async (req, res) => {
   const { body: { title, content } } = req;
   const errors = validationResult(req);
 
@@ -29,14 +30,21 @@ export const postPost: ExpressCB = (req, res) => {
     })
   }
 
-  res.status(201).json({
-    message: 'Post created successfully!',
-    post: {
-      _id: new Date().toISOString(),
-      title,
-      content,
-      creator: { name: 'Alex' },
-      createdAt: new Date()
-    }
-  });
+  const post = new Post({
+    title,
+    content,
+    imageUrl: 'images/dummy.png',
+    creator: { name: 'Alex' },
+  })
+
+  try {
+    const result = await post.save();
+
+    res.status(201).json({
+      message: 'Post created successfully!',
+      post: result
+    });
+  } catch (e) {
+    console.log(e);
+  }
 }

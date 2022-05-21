@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import bodyParser from 'body-parser';
+import mongoose from 'mongoose';
 import { router as feedRoutes } from './routes/feed';
 
 const app = express();
@@ -15,4 +17,8 @@ app.use((req, res, next) => {
 
 app.use('/feed', feedRoutes);
 
-app.listen(8080);
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    app.listen(8080);
+  })
+  .catch(e => console.log(e));
