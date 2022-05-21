@@ -1,3 +1,4 @@
+import path from 'path';
 import 'dotenv/config';
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -7,6 +8,7 @@ import { router as feedRoutes } from './routes/feed';
 const app = express();
 
 app.use(bodyParser.json());
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,6 +18,11 @@ app.use((req, res, next) => {
 });
 
 app.use('/feed', feedRoutes);
+
+app.use((err, req, res) => {
+  const { statusCode, message } = err as any;
+  (res as any).status(statusCode || 500).json({ message })
+})
 
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {

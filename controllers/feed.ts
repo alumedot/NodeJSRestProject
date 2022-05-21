@@ -19,15 +19,14 @@ export const getPosts: ExpressCB = (req, res) => {
   });
 }
 
-export const postPost: ExpressCB = async (req, res) => {
+export const postPost: ExpressCB = async (req, res, next) => {
   const { body: { title, content } } = req;
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
-    return res.status(422).json({
-      message: 'Validation failed, entered data is incorrect.',
-      errors: errors.array()
-    })
+    const error = new Error('Validation failed, entered data is incorrect.');
+    (error as Error & { statusCode: number }).statusCode = 422;
+    next(error);
   }
 
   const post = new Post({
@@ -45,6 +44,9 @@ export const postPost: ExpressCB = async (req, res) => {
       post: result
     });
   } catch (e) {
-    console.log(e);
+    if (!e.statusCode) {
+      e.statusCode = 500;
+    }
+    next(e);
   }
 }
