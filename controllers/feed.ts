@@ -27,10 +27,16 @@ export const postPost: ExpressCB = async (req, res, next) => {
     next(error);
   }
 
+  if (!req.file) {
+    const error = new Error('No image provided.');
+    (error as Error & { statusCode: number }).statusCode = 422;
+    next(error);
+  }
+
   const post = new Post({
     title,
     content,
-    imageUrl: 'images/dummy.png',
+    imageUrl: req.file.path,
     creator: { name: 'Alex' },
   })
 
