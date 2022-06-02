@@ -5,11 +5,20 @@ import { Post } from '../models/post';
 import type { ExpressCB } from './types';
 
 export const getPosts: ExpressCB = async (req, res, next) => {
+  const currentPage = Number(req.query.page) || 1;
+  const LIMIT = 2;
+
   try {
-    const posts = await Post.find();
+    const totalItems = await  Post.find().countDocuments();
+
+    const posts = await Post.find()
+      .skip((currentPage - 1) * LIMIT)
+      .limit(LIMIT);
+
     res.status(200).json({
       message: 'Fetched posts',
-      posts
+      posts,
+      totalItems
     });
   } catch (e) {
     if (!e.statusCode) {
@@ -121,6 +130,27 @@ export const updatePost: ExpressCB = async (req, res, next) => {
     const updatedPost = await post.save();
 
     return res.status(200).json({ message: 'Post updated successfully', post: updatedPost });
+  } catch (e) {
+    if (!e.statusCode) {
+      e.statusCode = 500;
+    }
+    next(e);
+  }
+}
+
+export const deletePost: ExpressCB = async ({ params }, res, next) => {
+  try {
+    const post = await Post.findById(params.postId);
+
+    if (!post) {
+      const error = new Error("Couldn't find post");
+      (error as Error & { statusCode: number }).statusCode = 404;
+      throw error;
+    }
+    // TODO Check logged it user
+    clearImage(post.imageUrl);
+    await Post.findByIdAndRemove(params.postId);
+    res.status(200).json({ message: 'Deleted post' });
   } catch (e) {
     if (!e.statusCode) {
       e.statusCode = 500;
