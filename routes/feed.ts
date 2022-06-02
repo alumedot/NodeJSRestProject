@@ -1,4 +1,4 @@
-import express from 'express';
+import { Router } from 'express';
 import { body } from 'express-validator';
 import {
   getPosts,
@@ -8,7 +8,7 @@ import {
   deletePost
 } from '../controllers/feed';
 
-export const router = express.Router();
+export const router = Router();
 
 router.get('/posts', getPosts);
 

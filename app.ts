@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { router as feedRoutes } from './routes/feed';
+import { router as authRoutes } from './routes/auth';
 
 const app = express();
 
@@ -44,10 +45,11 @@ app.use((req, res, next) => {
 });
 
 app.use('/feed', feedRoutes);
+app.use('/auth', authRoutes);
 
 app.use((err, req, res) => {
-  const { statusCode, message } = err as any;
-  (res as any).status(statusCode || 500).json({ message })
+  const { statusCode, message, data } = err as any;
+  (res as any).status(statusCode || 500).json({ message, data })
 })
 
 mongoose.connect(process.env.MONGODB_URI)
