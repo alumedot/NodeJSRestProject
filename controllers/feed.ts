@@ -35,13 +35,13 @@ export const postPost: ExpressCB = async (req, res, next) => {
   if (!errors.isEmpty()) {
     const error = new Error('Validation failed, entered data is incorrect.');
     (error as Error & { statusCode: number }).statusCode = 422;
-    next(error);
+    throw error;
   }
 
   if (!req.file) {
     const error = new Error('No image provided.');
     (error as Error & { statusCode: number }).statusCode = 422;
-    next(error);
+    throw error;
   }
 
   const post = new Post({

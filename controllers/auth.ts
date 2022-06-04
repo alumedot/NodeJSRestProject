@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import type { ValidationError } from 'express-validator';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { User } from '../models/user';
 import type { ExpressCB } from './types';
 
@@ -33,6 +34,51 @@ export const signup: ExpressCB = async (req, res, next) => {
     if (!e.statusCode) {
       e.statusCode = 500;
     }
+    next(e);
+  }
+}
+
+export const login: ExpressCB = async (req, res, next) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      const error = new Error('A user with this email could not be found') as Error & {
+        statusCode: number;
+      };
+      error.statusCode = 404;
+
+      throw error;
+    }
+
+    const isEqual = await bcrypt.compare(password, user.password);
+
+    if (!isEqual) {
+      const error = new Error('Wrong password!') as Error & {
+        statusCode: number;
+      };
+      error.statusCode = 401;
+    }
+
+    const token = jwt.sign(
+      {
+        email: user.email,
+        userId: user._id.toString()
+      },
+      process.env.SECRET_KEY,
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({ token, userId: user._id.toString() });
+  } catch (e) {
+    if (!e.statusCode) {
+      e.statusCode = 500;
+    }
+
+    console.log('catch is here', e);
+
     next(e);
   }
 }
