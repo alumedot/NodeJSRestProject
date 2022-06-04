@@ -82,3 +82,48 @@ export const login: ExpressCB = async (req, res, next) => {
     next(e);
   }
 }
+
+export const getStatus: ExpressCB = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      const error = new Error('User not found') as Error & {
+        statusCode: number;
+      };
+      error.statusCode = 404;
+      throw error;
+    }
+
+    res.status(200).json({ status: user.status })
+  } catch (e) {
+    if (!e.statusCode) {
+      e.statusCode = 500;
+    }
+    next(e);
+  }
+}
+
+export const patchStatus: ExpressCB = async ({ userId, body }, res, next) => {
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      const error = new Error('User not found') as Error & {
+        statusCode: number;
+      };
+      error.statusCode = 404;
+      throw error;
+    }
+
+    user.status = body.status;
+    await user.save();
+
+    res.status(200).json({ message: 'User updated '});
+  } catch (e) {
+    if (!e.statusCode) {
+      e.statusCode = 500;
+    }
+    next(e);
+  }
+}

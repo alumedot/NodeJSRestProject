@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { validationResult } from 'express-validator';
 import { Post } from '../models/post';
+import { User } from '../models/user';
 import type { ExpressCB } from './types';
 
 export const getPosts: ExpressCB = async (req, res, next) => {
@@ -12,6 +13,7 @@ export const getPosts: ExpressCB = async (req, res, next) => {
     const totalItems = await  Post.find().countDocuments();
 
     const posts = await Post.find()
+      .populate('creator')
       .skip((currentPage - 1) * LIMIT)
       .limit(LIMIT);
 
@@ -30,6 +32,7 @@ export const getPosts: ExpressCB = async (req, res, next) => {
 
 export const postPost: ExpressCB = async (req, res, next) => {
   const { body: { title, content } } = req;
+  const userId = req.userId;
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -48,11 +51,15 @@ export const postPost: ExpressCB = async (req, res, next) => {
     title,
     content,
     imageUrl: req.file.path,
-    creator: { name: 'Alex' },
+    creator: userId,
   })
 
   try {
     const result = await post.save();
+
+    const user = await User.findById(userId)
+    user.posts.push(post);
+    await user.save();
 
     res.status(201).json({
       message: 'Post created successfully!',
@@ -119,6 +126,12 @@ export const updatePost: ExpressCB = async (req, res, next) => {
       throw error;
     }
 
+    if (post.creator.toString() !== req.userId) {
+      const error = new Error('Not authorised.');
+      (error as Error & { statusCode: number }).statusCode = 403;
+      throw error;
+    }
+
     if (image !== post.imageUrl) {
       clearImage(post.imageUrl);
     }
@@ -138,7 +151,7 @@ export const updatePost: ExpressCB = async (req, res, next) => {
   }
 }
 
-export const deletePost: ExpressCB = async ({ params }, res, next) => {
+export const deletePost: ExpressCB = async ({ params, userId }, res, next) => {
   try {
     const post = await Post.findById(params.postId);
 
@@ -147,9 +160,21 @@ export const deletePost: ExpressCB = async ({ params }, res, next) => {
       (error as Error & { statusCode: number }).statusCode = 404;
       throw error;
     }
+
+    if (post.creator.toString() !== userId) {
+      const error = new Error('Not authorised.');
+      (error as Error & { statusCode: number }).statusCode = 403;
+      throw error;
+    }
+
     // TODO Check logged it user
     clearImage(post.imageUrl);
     await Post.findByIdAndRemove(params.postId);
+
+    const user = await User.findById(userId);
+    user.posts.pull(params.postId);
+    await user.save();
+
     res.status(200).json({ message: 'Deleted post' });
   } catch (e) {
     if (!e.statusCode) {

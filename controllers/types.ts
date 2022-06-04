@@ -1,3 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 
-export type ExpressCB = (req: Request, res: Response, next: NextFunction) => void;
+interface IRequest extends Request {
+  userId: string;
+}
+
+export type ExpressCB = (req: IRequest, res: Response, next: NextFunction) => void;
