@@ -4,6 +4,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
 import multer from 'multer';
+import { Server } from 'socket.io';
 import { router as feedRoutes } from './routes/feed';
 import { router as authRoutes } from './routes/auth';
 
@@ -54,6 +55,15 @@ app.use((err, req, res) => {
 
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
-    app.listen(8080);
+    const server = app.listen(8080);
+    const io = new Server(server, {
+      cors: {
+        origin: 'http://localhost:3000',
+        methods: ['GET', 'POST']
+      }
+    });
+    io.on('connection', (_socket) => {
+      console.log('Client connected');
+    });
   })
   .catch(e => console.log(e));
