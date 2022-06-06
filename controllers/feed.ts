@@ -3,6 +3,7 @@ import path from 'path';
 import { validationResult } from 'express-validator';
 import { Post } from '../models/post';
 import { User } from '../models/user';
+import { getIo } from '../socket';
 import type { ExpressCB } from './types';
 
 export const getPosts: ExpressCB = async (req, res, next) => {
@@ -60,6 +61,11 @@ export const postPost: ExpressCB = async (req, res, next) => {
     const user = await User.findById(userId)
     user.posts.push(post);
     await user.save();
+
+    getIo().emit('posts', {
+      action: 'create',
+      post
+    });
 
     res.status(201).json({
       message: 'Post created successfully!',

@@ -7,6 +7,7 @@ import multer from 'multer';
 import { Server } from 'socket.io';
 import { router as feedRoutes } from './routes/feed';
 import { router as authRoutes } from './routes/auth';
+import { init } from './socket';
 
 const app = express();
 
@@ -56,12 +57,7 @@ app.use((err, req, res) => {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     const server = app.listen(8080);
-    const io = new Server(server, {
-      cors: {
-        origin: 'http://localhost:3000',
-        methods: ['GET', 'POST']
-      }
-    });
+    const io = init(server);
     io.on('connection', (_socket) => {
       console.log('Client connected');
     });
