@@ -15,6 +15,7 @@ export const getPosts: ExpressCB = async (req, res, next) => {
 
     const posts = await Post.find()
       .populate('creator')
+      .sort({ createdAt: -1 })
       .skip((currentPage - 1) * LIMIT)
       .limit(LIMIT);
 
@@ -64,7 +65,13 @@ export const postPost: ExpressCB = async (req, res, next) => {
 
     getIo().emit('posts', {
       action: 'create',
-      post
+      post: {
+        ...post._doc,
+        creator: {
+          _id: userId,
+          name: user.name
+        }
+      }
     });
 
     res.status(201).json({
@@ -124,7 +131,7 @@ export const updatePost: ExpressCB = async (req, res, next) => {
   }
 
   try {
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate('creator');
 
     if (!post) {
       const error = new Error("Couldn't find post");
@@ -132,7 +139,7 @@ export const updatePost: ExpressCB = async (req, res, next) => {
       throw error;
     }
 
-    if (post.creator.toString() !== req.userId) {
+    if (post.creator._id.toString() !== req.userId) {
       const error = new Error('Not authorised.');
       (error as Error & { statusCode: number }).statusCode = 403;
       throw error;
@@ -147,6 +154,8 @@ export const updatePost: ExpressCB = async (req, res, next) => {
     post.content = content;
 
     const updatedPost = await post.save();
+
+    getIo().emit('posts', { action: 'update', post: updatedPost });
 
     return res.status(200).json({ message: 'Post updated successfully', post: updatedPost });
   } catch (e) {
@@ -180,6 +189,8 @@ export const deletePost: ExpressCB = async ({ params, userId }, res, next) => {
     const user = await User.findById(userId);
     user.posts.pull(params.postId);
     await user.save();
+
+    getIo().emit('posts', { action: 'delete', postId: params.postId })
 
     res.status(200).json({ message: 'Deleted post' });
   } catch (e) {
