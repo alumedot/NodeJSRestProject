@@ -4,10 +4,9 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
 import multer from 'multer';
-import { Server } from 'socket.io';
-import { router as feedRoutes } from './routes/feed';
-import { router as authRoutes } from './routes/auth';
-import { init } from './socket';
+import { graphqlHTTP } from 'express-graphql';
+import { schema } from './graphql/schema';
+import { resolver } from './graphql/resolvers';
 
 const app = express();
 
@@ -46,8 +45,11 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/feed', feedRoutes);
-app.use('/auth', authRoutes);
+app.use('/graphql', graphqlHTTP({
+  schema,
+  rootValue: resolver,
+  graphiql: true
+}));
 
 app.use((err, req, res) => {
   const { statusCode, message, data } = err as any;
@@ -56,10 +58,6 @@ app.use((err, req, res) => {
 
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
-    const server = app.listen(8080);
-    const io = init(server);
-    io.on('connection', (_socket) => {
-      console.log('Client connected');
-    });
+    app.listen(8080);
   })
   .catch(e => console.log(e));
