@@ -1,5 +1,11 @@
 import bcrypt from 'bcryptjs';
+import validator from 'validator';
 import { User } from '../models/user';
+
+export interface IResponseError extends Error {
+  data: {};
+  code: number;
+}
 
 export const resolver = {
   async createUser(
@@ -8,6 +14,23 @@ export const resolver = {
     },
     req
   ) {
+    const errors: { message: string }[] = [];
+
+    if (!validator.isEmail(email)) {
+      errors.push({ message: email });
+    }
+
+    if (validator.isEmpty(password) || !validator.isLength(password, { min: 5 })) {
+      errors.push({ message: 'Password is too short' });
+    }
+
+    if (errors.length) {
+      const error = new Error('Invalid input');
+      (error as IResponseError).data = errors;
+      (error as IResponseError).code = 422;
+      throw error;
+    }
+
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {

@@ -7,6 +7,7 @@ import multer from 'multer';
 import { graphqlHTTP } from 'express-graphql';
 import { schema } from './graphql/schema';
 import { resolver } from './graphql/resolvers';
+import type { IResponseError } from './graphql/resolvers';
 
 const app = express();
 
@@ -42,13 +43,29 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   next();
 });
 
 app.use('/graphql', graphqlHTTP({
   schema,
   rootValue: resolver,
-  graphiql: true
+  graphiql: true,
+  formatError(e) {
+    if (!e.originalError) {
+      return e;
+    }
+    const data = (e.originalError as IResponseError).data;
+    const message = e.message || 'An error occurred';
+    const code = (e.originalError as IResponseError).code;
+    return {
+      message,
+      status: code,
+      data
+    };
+  }
 }));
 
 app.use((err, req, res) => {
