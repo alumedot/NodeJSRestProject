@@ -3,6 +3,7 @@ import validator from 'validator';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user';
 import { Post } from '../models/post';
+import { clearImage } from '../controllers/feed';
 
 export interface IResponseError extends Error {
   data: {};
@@ -202,5 +203,103 @@ export const resolver = {
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString()
     };
+  },
+
+  async updatePost(
+    {
+      id,
+      postInput: {
+        title,
+        content,
+        imageUrl
+      }
+    },
+    req
+  ) {
+    if (!req.isAuth) {
+      const error = new Error('Not authenticated');
+      (error as IResponseError).code = 401;
+      throw error;
+    }
+
+    const post = await Post.findById(id).populate('creator');
+
+    if (!post) {
+      const error = new Error('Post not found');
+      (error as IResponseError).code = 404;
+      throw error;
+    }
+
+    if (post.creator._id.toString() !== req.userId.toString()) {
+      const error = new Error('Not authorized');
+      (error as IResponseError).code = 403;
+      throw error;
+    }
+
+    const errors = [];
+
+    if (validator.isEmpty(title) || !validator.isLength(title, { min: 5 })) {
+      errors.push({ message: 'Title is invalid' });
+    }
+
+    if (validator.isEmpty(content) || !validator.isLength(content, { min: 5 })) {
+      errors.push({ message: 'Content is invalid' });
+    }
+
+    if (errors.length) {
+      const error = new Error('Invalid input');
+      (error as IResponseError).data = errors;
+      (error as IResponseError).code = 422;
+      throw error;
+    }
+
+    post.title = title;
+    post.content = content;
+
+    if (imageUrl !== 'undefined') {
+      post.imageUrl = imageUrl;
+    }
+
+    const updatedPost = await post.save();
+
+    return {
+      ...updatedPost._doc,
+      _id: updatedPost._id.toString(),
+      createdAt: updatedPost.createdAt.toISOString(),
+      updatedAt: updatedPost.updatedAt.toISOString()
+    };
+  },
+
+  async deletePost({ id }, req) {
+    if (!req.isAuth) {
+      const error = new Error('Not authenticated');
+      (error as IResponseError).code = 401;
+      throw error;
+    }
+
+    const post = await Post.findById(id);
+
+    if (!post) {
+      const error = new Error('Post not found');
+      (error as IResponseError).code = 404;
+      throw error;
+    }
+
+    if (post.creator.toString() !== req.userId.toString()) {
+      const error = new Error('Not authorized');
+      (error as IResponseError).code = 403;
+      throw error;
+    }
+
+    clearImage(post.imageUrl);
+
+    await Post.findByIdAndRemove(id);
+
+    const user = await User.findById(req.userId);
+    user.posts.pull(id);
+
+    await user.save();
+
+    return true;
   }
 }
