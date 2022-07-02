@@ -147,17 +147,25 @@ export const resolver = {
       updatedAt: createdPost.updatedAt.toISOString()
     };
   },
-  async posts(args, req) {
+  async posts({ page }, req) {
     if (!req.isAuth) {
       const error = new Error('Not authenticated');
       (error as IResponseError).code = 401;
       throw error;
     }
 
+    if (!page) {
+      page = 1;
+    }
+
+    const perPage = 2;
+
     const totalPosts = await Post.find().countDocuments();
 
     const posts = await Post.find()
       .sort({ createdAt: -1 })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
       .populate('creator');
 
     return {
@@ -171,5 +179,28 @@ export const resolver = {
       }),
       totalPosts
     }
+  },
+
+  async post({ id }, req) {
+    if (!req.isAuth) {
+      const error = new Error('Not authenticated');
+      (error as IResponseError).code = 401;
+      throw error;
+    }
+
+    const post = await Post.findById(id).populate('creator');
+
+    if (!post) {
+      const error = new Error('Post not found');
+      (error as IResponseError).code = 404;
+      throw error;
+    }
+
+    return {
+      ...post._doc,
+      _id: post._id.toString(),
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString()
+    };
   }
 }

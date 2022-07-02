@@ -3,7 +3,6 @@ import path from 'path';
 import { validationResult } from 'express-validator';
 import { Post } from '../models/post';
 import { User } from '../models/user';
-import { getIo } from '../socket';
 import type { ExpressCB } from './types';
 
 export const getPosts: ExpressCB = async (req, res, next) => {
@@ -62,17 +61,6 @@ export const postPost: ExpressCB = async (req, res, next) => {
     const user = await User.findById(userId)
     user.posts.push(post);
     await user.save();
-
-    getIo().emit('posts', {
-      action: 'create',
-      post: {
-        ...post._doc,
-        creator: {
-          _id: userId,
-          name: user.name
-        }
-      }
-    });
 
     res.status(201).json({
       message: 'Post created successfully!',
@@ -155,8 +143,6 @@ export const updatePost: ExpressCB = async (req, res, next) => {
 
     const updatedPost = await post.save();
 
-    getIo().emit('posts', { action: 'update', post: updatedPost });
-
     return res.status(200).json({ message: 'Post updated successfully', post: updatedPost });
   } catch (e) {
     if (!e.statusCode) {
@@ -190,8 +176,6 @@ export const deletePost: ExpressCB = async ({ params, userId }, res, next) => {
     user.posts.pull(params.postId);
     await user.save();
 
-    getIo().emit('posts', { action: 'delete', postId: params.postId })
-
     res.status(200).json({ message: 'Deleted post' });
   } catch (e) {
     if (!e.statusCode) {
@@ -201,7 +185,7 @@ export const deletePost: ExpressCB = async ({ params, userId }, res, next) => {
   }
 }
 
-const clearImage = (filePath) => {
+export const clearImage = (filePath) => {
   const pathToDelete = path.join(__dirname, '..', filePath);
   fs.unlink(pathToDelete, e => console.log(e));
 }

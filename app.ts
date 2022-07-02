@@ -9,6 +9,7 @@ import { schema } from './graphql/schema';
 import { resolver } from './graphql/resolvers';
 import type { IResponseError } from './graphql/resolvers';
 import { auth } from './middleware/auth';
+import { clearImage } from './controllers/feed';
 
 const app = express();
 
@@ -51,6 +52,22 @@ app.use((req, res, next) => {
 });
 
 app.use(auth);
+
+app.put('/post-image', (req, res, next) => {
+  if (!(req as any).isAuth) {
+    throw new Error('Not authenticated.');
+  }
+
+  if (!req.file) {
+    return res.status(200).json({ message: 'No file provided' });
+  }
+
+  if (req.body.oldPath) {
+    clearImage(req.body.oldPath);
+  }
+
+  return res.status(201).json({ message: 'File stored.', filePath: req.file.path });
+});
 
 app.use('/graphql', graphqlHTTP({
   schema,
