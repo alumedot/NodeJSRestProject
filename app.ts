@@ -8,6 +8,7 @@ import { graphqlHTTP } from 'express-graphql';
 import { schema } from './graphql/schema';
 import { resolver } from './graphql/resolvers';
 import type { IResponseError } from './graphql/resolvers';
+import { auth } from './middleware/auth';
 
 const app = express();
 
@@ -48,6 +49,8 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+app.use(auth);
 
 app.use('/graphql', graphqlHTTP({
   schema,

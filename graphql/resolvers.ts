@@ -36,8 +36,7 @@ export const resolver = {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      const error = new Error('User exists');
-      throw error;
+      throw new Error('User exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -97,6 +96,12 @@ export const resolver = {
     },
     req
   ) {
+    if (!req.isAuth) {
+      const error = new Error('Not authenticated');
+      (error as IResponseError).code = 401;
+      throw error;
+    }
+
     const errors = [];
 
     if (validator.isEmpty(title) || !validator.isLength(title, { min: 5 })) {
@@ -114,15 +119,26 @@ export const resolver = {
       throw error;
     }
 
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      const error = new Error('Invalid user');
+      (error as IResponseError).code = 401;
+      throw error;
+    }
+
     const post = new Post({
       title,
       content,
-      imageUrl
+      imageUrl,
+      creator: user
     });
 
     const createdPost = await post.save();
 
-    // Add post to users posts
+    user.posts.push(createdPost);
+
+    await user.save();
 
     return {
       ...createdPost._doc,
@@ -130,5 +146,30 @@ export const resolver = {
       createdAt: createdPost.createdAt.toISOString(),
       updatedAt: createdPost.updatedAt.toISOString()
     };
+  },
+  async posts(args, req) {
+    if (!req.isAuth) {
+      const error = new Error('Not authenticated');
+      (error as IResponseError).code = 401;
+      throw error;
+    }
+
+    const totalPosts = await Post.find().countDocuments();
+
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .populate('creator');
+
+    return {
+      posts: posts.map((post) => {
+        return {
+          ...post._doc,
+          _id: post._id.toString(),
+          createdAt: post.createdAt.toISOString(),
+          updatedAt: post.updatedAt.toISOString()
+        };
+      }),
+      totalPosts
+    }
   }
 }
