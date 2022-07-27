@@ -72,14 +72,14 @@ export const login: ExpressCB = async (req, res, next) => {
     );
 
     res.status(200).json({ token, userId: user._id.toString() });
+    return;
   } catch (e) {
     if (!e.statusCode) {
       e.statusCode = 500;
     }
 
-    console.log('catch is here', e);
-
     next(e);
+    return e;
   }
 }
 
