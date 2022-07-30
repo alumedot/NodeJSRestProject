@@ -15,7 +15,7 @@
     ]
   },
   "scripts": {
-    "test": "mocha 'test/**/*.ts'",
+    "test": "mocha -r dotenv/config",
     "start": "nodemon"
   },
   "author": "Alexey Kozlov",
